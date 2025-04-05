@@ -38,6 +38,9 @@ if target_file:
     merged = merged.merge(tf_df, on="RR Target", suffixes=("", "_tf"))
     merged = merged.merge(td_df, on="RR Target", suffixes=("", "_time"))
 
+    # Filter RR Target range to 1.5–3.5 to avoid overlapping
+    merged = merged[(merged["RR Target"] >= 1.5) & (merged["RR Target"] <= 3.5)]
+
     # Calculate combined hit rate across all matching filters
     merged["Average Hit Rate"] = merged[["Hit Rate", "Hit Rate_fib", "Hit Rate_range", "Hit Rate_tf", "Hit Rate_time"]].mean(axis=1)
 
