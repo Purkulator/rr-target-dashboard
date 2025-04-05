@@ -19,18 +19,18 @@ if target_file:
     time_df = all_data.get("By Time of Day")
 
     st.sidebar.header("Filter Setup")
-    selected_ticker = st.sidebar.selectbox("Ticker", ticker_df[ticker_df.columns[0]].unique())
-    selected_tf = st.sidebar.selectbox("Time Frame", tf_df[tf_df.columns[0]].unique())
-    selected_range = st.sidebar.selectbox("Range Bucket", range_df[range_df.columns[0]].unique())
-    selected_fib = st.sidebar.selectbox("Fibonacci Bucket", fib_df[fib_df.columns[0]].unique())
-    selected_time = st.sidebar.selectbox("Time of Day", time_df[time_df.columns[0]].unique())
+    selected_tickers = st.sidebar.multiselect("Ticker(s)", ticker_df[ticker_df.columns[0]].unique(), default=ticker_df[ticker_df.columns[0]].unique())
+    selected_tfs = st.sidebar.multiselect("Time Frame(s)", tf_df[tf_df.columns[0]].unique(), default=tf_df[tf_df.columns[0]].unique())
+    selected_ranges = st.sidebar.multiselect("Range Bucket(s)", range_df[range_df.columns[0]].unique(), default=range_df[range_df.columns[0]].unique())
+    selected_fibs = st.sidebar.multiselect("Fibonacci Bucket(s)", fib_df[fib_df.columns[0]].unique(), default=fib_df[fib_df.columns[0]].unique())
+    selected_times = st.sidebar.multiselect("Time of Day", time_df[time_df.columns[0]].unique(), default=time_df[time_df.columns[0]].unique())
 
     # Filter each dimension dataframe
-    t_df = ticker_df[ticker_df[ticker_df.columns[0]] == selected_ticker]
-    f_df = fib_df[fib_df[fib_df.columns[0]] == selected_fib]
-    r_df = range_df[range_df[range_df.columns[0]] == selected_range]
-    tf_df = tf_df[tf_df[tf_df.columns[0]] == selected_tf]
-    td_df = time_df[time_df[time_df.columns[0]] == selected_time]
+    t_df = ticker_df[ticker_df[ticker_df.columns[0]].isin(selected_tickers)]
+    f_df = fib_df[fib_df[fib_df.columns[0]].isin(selected_fibs)]
+    r_df = range_df[range_df[range_df.columns[0]].isin(selected_ranges)]
+    tf_df = tf_df[tf_df[tf_df.columns[0]].isin(selected_tfs)]
+    td_df = time_df[time_df[time_df.columns[0]].isin(selected_times)]
 
     # Merge on RR Target
     merged = t_df.merge(f_df, on="RR Target", suffixes=("", "_fib"))
@@ -39,7 +39,7 @@ if target_file:
     merged = merged.merge(td_df, on="RR Target", suffixes=("", "_time"))
 
     # Filter RR Target range to 1.5–3.5 to avoid overlapping
-    merged = merged[(merged["RR Target"] >= 1.8) & (merged["RR Target"] <= 3.2)]
+    merged = merged[(merged["RR Target"] >= 1.5) & (merged["RR Target"] <= 3.5)]
 
     # Calculate combined hit rate across all matching filters
     merged["Average Hit Rate"] = merged[["Hit Rate", "Hit Rate_fib", "Hit Rate_range", "Hit Rate_tf", "Hit Rate_time"]].mean(axis=1)
@@ -50,7 +50,7 @@ if target_file:
     ax.set_title("Filtered Average Hit Rate vs RR Target")
     ax.set_xlabel("RR Target")
     ax.set_ylabel("Hit Rate (%)")
-    ax.set_xticks(merged["RR Target"])  # ensure x-axis shows every 0.1 increment
+    ax.set_xticks(merged["RR Target"])
     ax.grid(True)
     st.pyplot(fig)
 
