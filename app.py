@@ -47,6 +47,7 @@ if target_file:
     ax.set_title("Filtered Average Hit Rate vs RR Target")
     ax.set_xlabel("RR Target")
     ax.set_ylabel("Hit Rate (%)")
+    ax.set_xticks(merged["RR Target"])  # ensure x-axis shows every 0.1 increment
     ax.grid(True)
     st.pyplot(fig)
 
