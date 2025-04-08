@@ -11,26 +11,32 @@ if target_file:
     all_data = pd.read_excel(target_file, sheet_name=None)
     df = all_data["Overall Hit Rates"]
 
-    # Allow user to select from all filterable dimensions
-    fib_df = all_data.get("By Fibonacci Level")
-    range_df = all_data.get("By Range Bucket")
-    ticker_df = all_data.get("By Ticker")
-    tf_df = all_data.get("By Time Frame")
-    time_df = all_data.get("By Time of Day")
+    # Rename columns if they have placeholder names
+    def rename_dim_column(df, preferred_name):
+        col = df.columns[0]
+        if preferred_name.lower() not in col.lower():
+            df = df.rename(columns={col: preferred_name})
+        return df
+
+    fib_df = rename_dim_column(all_data.get("By Fibonacci Level"), "Fibonacci Bucket")
+    range_df = rename_dim_column(all_data.get("By Range Bucket"), "Range Bucket")
+    ticker_df = rename_dim_column(all_data.get("By Ticker"), "Ticker")
+    tf_df = rename_dim_column(all_data.get("By Time Frame"), "Time Frame")
+    time_df = rename_dim_column(all_data.get("By Time of Day"), "Time of Day")
 
     st.sidebar.header("Filter Setup")
-    selected_tickers = st.sidebar.multiselect("Ticker(s)", ticker_df[ticker_df.columns[0]].unique(), default=ticker_df[ticker_df.columns[0]].unique())
-    selected_tfs = st.sidebar.multiselect("Time Frame(s)", tf_df[tf_df.columns[0]].unique(), default=tf_df[tf_df.columns[0]].unique())
-    selected_ranges = st.sidebar.multiselect("Range Bucket(s)", range_df[range_df.columns[0]].unique(), default=range_df[range_df.columns[0]].unique())
-    selected_fibs = st.sidebar.multiselect("Fibonacci Bucket(s)", fib_df[fib_df.columns[0]].unique(), default=fib_df[fib_df.columns[0]].unique())
-    selected_times = st.sidebar.multiselect("Time of Day", time_df[time_df.columns[0]].unique(), default=time_df[time_df.columns[0]].unique())
+    selected_tickers = st.sidebar.multiselect("Ticker(s)", ticker_df["Ticker"].unique(), default=ticker_df["Ticker"].unique())
+    selected_tfs = st.sidebar.multiselect("Time Frame(s)", tf_df["Time Frame"].unique(), default=tf_df["Time Frame"].unique())
+    selected_ranges = st.sidebar.multiselect("Range Bucket(s)", range_df["Range Bucket"].unique(), default=range_df["Range Bucket"].unique())
+    selected_fibs = st.sidebar.multiselect("Fibonacci Bucket(s)", fib_df["Fibonacci Bucket"].unique(), default=fib_df["Fibonacci Bucket"].unique())
+    selected_times = st.sidebar.multiselect("Time of Day", time_df["Time of Day"].unique(), default=time_df["Time of Day"].unique())
 
     # Filter each dimension dataframe
-    t_df = ticker_df[ticker_df[ticker_df.columns[0]].isin(selected_tickers)]
-    f_df = fib_df[fib_df[fib_df.columns[0]].isin(selected_fibs)]
-    r_df = range_df[range_df[range_df.columns[0]].isin(selected_ranges)]
-    tf_df = tf_df[tf_df[tf_df.columns[0]].isin(selected_tfs)]
-    td_df = time_df[time_df[time_df.columns[0]].isin(selected_times)]
+    t_df = ticker_df[ticker_df["Ticker"].isin(selected_tickers)]
+    f_df = fib_df[fib_df["Fibonacci Bucket"].isin(selected_fibs)]
+    r_df = range_df[range_df["Range Bucket"].isin(selected_ranges)]
+    tf_df = tf_df[tf_df["Time Frame"].isin(selected_tfs)]
+    td_df = time_df[time_df["Time of Day"].isin(selected_times)]
 
     # Merge on RR Target
     merged = t_df.merge(f_df, on="RR Target", suffixes=("", "_fib"))
