@@ -12,7 +12,6 @@ if target_file:
     all_data = pd.read_excel(target_file, sheet_name=None)
     df = all_data["Overall Hit Rates"]
 
-    # Rename columns if they have placeholder names
     def rename_dim_column(df, preferred_name):
         col = df.columns[0]
         if preferred_name.lower() not in col.lower():
@@ -39,23 +38,17 @@ if target_file:
         selected_fibs = st.sidebar.multiselect("Fibonacci Bucket(s)", fib_df["Fibonacci Bucket"].unique(), default=fib_df["Fibonacci Bucket"].unique())
         selected_times = st.sidebar.multiselect("Time of Day", time_df["Time of Day"].unique(), default=time_df["Time of Day"].unique())
 
-    # Filter each dimension dataframe
-    t_df = ticker_df[ticker_df["Ticker"].isin(selected_tickers)]
-    f_df = fib_df[fib_df["Fibonacci Bucket"].isin(selected_fibs)]
-    r_df = range_df[range_df["Range Bucket"].isin(selected_ranges)]
-    tf_df = tf_df[tf_df["Time Frame"].isin(selected_tfs)]
-    td_df = time_df[time_df["Time of Day"].isin(selected_times)]
+    # Filter and merge on RR Target
+    merged = ticker_df[ticker_df["Ticker"].isin(selected_tickers)]
+    merged = merged.merge(fib_df[fib_df["Fibonacci Bucket"].isin(selected_fibs)], on="RR Target", suffixes=("", "_fib"))
+    merged = merged.merge(range_df[range_df["Range Bucket"].isin(selected_ranges)], on="RR Target", suffixes=("", "_range"))
+    merged = merged.merge(tf_df[tf_df["Time Frame"].isin(selected_tfs)], on="RR Target", suffixes=("", "_tf"))
+    merged = merged.merge(time_df[time_df["Time of Day"].isin(selected_times)], on="RR Target", suffixes=("", "_time"))
 
-    # Merge on RR Target
-    merged = t_df.merge(f_df, on="RR Target", suffixes=("", "_fib"))
-    merged = merged.merge(r_df, on="RR Target", suffixes=("", "_range"))
-    merged = merged.merge(tf_df, on="RR Target", suffixes=("", "_tf"))
-    merged = merged.merge(td_df, on="RR Target", suffixes=("", "_time"))
+    # Trim range to avoid overlap
+    merged = merged[(merged["RR Target"] >= 1.5) & (merged["RR Target"] <= 3.5)].copy()
 
-    # Filter RR Target range to 1.5–3.5 to avoid overlapping
-    merged = merged[(merged["RR Target"] >= 1.5) & (merged["RR Target"] <= 3.5)]
-
-    # Calculate combined hit rate across all matching filters
+    # Calculate average hit rate
     merged["Average Hit Rate"] = merged[["Hit Rate", "Hit Rate_fib", "Hit Rate_range", "Hit Rate_tf", "Hit Rate_time"]].mean(axis=1)
 
     st.header("🎯 Filtered Hit Rate Curve")
@@ -67,22 +60,20 @@ if target_file:
     ax.set_xticks(merged["RR Target"])
     ax.grid(True)
     st.pyplot(fig)
+    plt.close(fig)
 
-    # Total RR Attained Simulation (based on trade logic)
     st.header("📈 Total RR Attained Simulation")
     rr_targets = np.round(np.arange(1.8, 2.5, 0.1), 1)
     total_rr = []
+    avg_hit_rates = merged["Average Hit Rate"].values
 
     for target in rr_targets:
-        result = []
-        for _, row in merged.iterrows():
-            if row["Average Hit Rate"] >= target / 10:  # simulate hit as successful outcome
-                result.append(target)
-            elif row["Average Hit Rate"] > 0:  # simulate partial profit
-                result.append(round(row["Average Hit Rate"] * target, 2))
-            else:  # losing trade
-                result.append(-1.0)
-        total_rr.append(sum(result))
+        hits = avg_hit_rates >= target / 10
+        partials = (avg_hit_rates > 0) & ~hits
+        losses = avg_hit_rates <= 0
+
+        rr_values = np.where(hits, target, np.where(partials, np.round(avg_hit_rates * target, 2), -1.0))
+        total_rr.append(np.sum(rr_values))
 
     rr_df = pd.DataFrame({"RR Target": rr_targets, "Total RR Attained": total_rr})
     fig2, ax2 = plt.subplots()
@@ -92,6 +83,7 @@ if target_file:
     ax2.set_ylabel("Total RR Attained")
     ax2.grid(True)
     st.pyplot(fig2)
+    plt.close(fig2)
 
 else:
     st.info("Please upload the RR Target Analysis Excel file to begin.")
