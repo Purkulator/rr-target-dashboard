@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 
 st.set_page_config(page_title="RR Target Dashboard", layout="wide")
 
@@ -25,11 +26,18 @@ if target_file:
     time_df = rename_dim_column(all_data.get("By Time of Day"), "Time of Day")
 
     st.sidebar.header("Filter Setup")
-    selected_tickers = st.sidebar.multiselect("Ticker(s)", ticker_df["Ticker"].unique(), default=ticker_df["Ticker"].unique())
-    selected_tfs = st.sidebar.multiselect("Time Frame(s)", tf_df["Time Frame"].unique(), default=tf_df["Time Frame"].unique())
-    selected_ranges = st.sidebar.multiselect("Range Bucket(s)", range_df["Range Bucket"].unique(), default=range_df["Range Bucket"].unique())
-    selected_fibs = st.sidebar.multiselect("Fibonacci Bucket(s)", fib_df["Fibonacci Bucket"].unique(), default=fib_df["Fibonacci Bucket"].unique())
-    selected_times = st.sidebar.multiselect("Time of Day", time_df["Time of Day"].unique(), default=time_df["Time of Day"].unique())
+    if st.sidebar.button("Reset Filters"):
+        selected_tickers = ticker_df["Ticker"].unique()
+        selected_tfs = tf_df["Time Frame"].unique()
+        selected_ranges = range_df["Range Bucket"].unique()
+        selected_fibs = fib_df["Fibonacci Bucket"].unique()
+        selected_times = time_df["Time of Day"].unique()
+    else:
+        selected_tickers = st.sidebar.multiselect("Ticker(s)", ticker_df["Ticker"].unique(), default=ticker_df["Ticker"].unique())
+        selected_tfs = st.sidebar.multiselect("Time Frame(s)", tf_df["Time Frame"].unique(), default=tf_df["Time Frame"].unique())
+        selected_ranges = st.sidebar.multiselect("Range Bucket(s)", range_df["Range Bucket"].unique(), default=range_df["Range Bucket"].unique())
+        selected_fibs = st.sidebar.multiselect("Fibonacci Bucket(s)", fib_df["Fibonacci Bucket"].unique(), default=fib_df["Fibonacci Bucket"].unique())
+        selected_times = st.sidebar.multiselect("Time of Day", time_df["Time of Day"].unique(), default=time_df["Time of Day"].unique())
 
     # Filter each dimension dataframe
     t_df = ticker_df[ticker_df["Ticker"].isin(selected_tickers)]
@@ -59,6 +67,31 @@ if target_file:
     ax.set_xticks(merged["RR Target"])
     ax.grid(True)
     st.pyplot(fig)
+
+    # Total RR Attained Simulation (based on trade logic)
+    st.header("📈 Total RR Attained Simulation")
+    rr_targets = np.round(np.arange(1.8, 2.5, 0.1), 1)
+    total_rr = []
+
+    for target in rr_targets:
+        result = []
+        for _, row in merged.iterrows():
+            if row["Average Hit Rate"] >= target / 10:  # simulate hit as successful outcome
+                result.append(target)
+            elif row["Average Hit Rate"] > 0:  # simulate partial profit
+                result.append(round(row["Average Hit Rate"] * target, 2))
+            else:  # losing trade
+                result.append(-1.0)
+        total_rr.append(sum(result))
+
+    rr_df = pd.DataFrame({"RR Target": rr_targets, "Total RR Attained": total_rr})
+    fig2, ax2 = plt.subplots()
+    ax2.plot(rr_df["RR Target"], rr_df["Total RR Attained"], marker='o', color='blue')
+    ax2.set_title("Total RR Attained by RR Target (1.8 to 2.4)")
+    ax2.set_xlabel("RR Target")
+    ax2.set_ylabel("Total RR Attained")
+    ax2.grid(True)
+    st.pyplot(fig2)
 
 else:
     st.info("Please upload the RR Target Analysis Excel file to begin.")
